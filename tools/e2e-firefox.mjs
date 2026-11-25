@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 const PORT = 8137, URL0 = `http://localhost:${PORT}/`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let server;
-const startServer = async () => { server = spawn('node', ['server/server.js'], { env: { ...process.env, PORT, FETCH_DB: TMP + '/test.db' }, stdio: 'inherit' }); await sleep(700); };
+const startServer = async () => { server = spawn('node', ['server/main.js'], { env: { ...process.env, PORT, FETCH_DB: TMP + '/test.db' }, stdio: 'inherit' }); await sleep(700); };
 const stopServer = async () => { server.kill('SIGKILL'); await sleep(500); };
 await startServer();
 const ff = spawn('firefox', ['--headless', '--no-remote', '--profile', TMP + '/prof', '--remote-debugging-port', '9333', '--window-size=390,800'], { stdio: 'ignore' });

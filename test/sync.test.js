@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Clock, merge, materialize, sortItems, rankWrites, rankId } from '../public/js/core.js';
-import { createApp } from '../server/server.js';
+import { createApp } from '../server/app.js';
 
 const LIST = '11111111-1111-4111-8111-111111111111';
 const op = (clock, entity, id, field, value, wall) => ({ entity, id, field, value, hlc: clock.now(wall) });
