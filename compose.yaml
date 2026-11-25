@@ -1,0 +1,11 @@
+services:
+  fetch:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - fetch-data:/data
+    restart: unless-stopped
+
+volumes:
+  fetch-data:

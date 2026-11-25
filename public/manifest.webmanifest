@@ -1,0 +1,11 @@
+{
+  "name": "Fetch!",
+  "short_name": "Fetch!",
+  "description": "Einkaufsliste, die auch ohne Netz funktioniert",
+  "lang": "de",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fafbf5",
+  "theme_color": "#1f5c3a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

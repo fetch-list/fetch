@@ -1,0 +1,261 @@
+/* Fetch! on top of Pico CSS. Pico supplies form and typography defaults; this file is the app layout. */
+:root {
+  --leaf: #1f5c3a;
+  --ball: #d4e640; /* tennis ball: the one loud colour, used for "add" and "done" */
+  --paper: #fafbf5;
+  --ink: #16221a;
+  --line: #dde3d3;
+  --muted: #5d6b60;
+  --tomato: #c8402e;
+
+  --pico-background-color: var(--paper);
+  --pico-color: var(--ink);
+  --pico-primary: var(--leaf);
+  --pico-primary-background: var(--leaf);
+  --pico-primary-border: var(--leaf);
+  --pico-primary-hover-background: #174a2e;
+  --pico-primary-hover-border: #174a2e;
+  --pico-primary-focus: rgb(31 92 58 / 0.3);
+  --pico-form-element-active-border-color: var(--leaf);
+  --pico-form-element-focus-color: rgb(31 92 58 / 0.3);
+  --pico-border-radius: 0.6rem;
+  --pico-spacing: 0.9rem;
+  --pico-form-element-spacing-vertical: 0.55rem;
+  --pico-form-element-spacing-horizontal: 0.8rem;
+}
+
+body {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+
+/* Pico gives every form control a bottom margin and full width; rows here are laid out with flex gaps. */
+select, input, button, [role="button"] { margin: 0; }
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  background: var(--leaf);
+  color: #fff;
+}
+.brand {
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+  color: var(--ball);
+}
+.top select {
+  flex: 1;
+  min-width: 0;
+  background-color: rgb(255 255 255 / 0.12);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  --pico-form-element-focus-color: rgb(212 230 64 / 0.6);
+}
+.top select option { color: var(--ink); }
+
+.menu { position: relative; margin: 0; }
+.menu summary {
+  list-style: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff !important;
+}
+.menu summary::after { display: none; }
+.menu summary::-webkit-details-marker { display: none; }
+.menu summary:focus-visible { outline: 2px solid var(--ball); }
+.menu-items {
+  position: absolute;
+  right: 0;
+  top: 3rem;
+  width: max-content;
+  max-width: 85vw;
+  display: grid;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--pico-border-radius);
+  box-shadow: 0 8px 24px rgb(22 34 26 / 0.18);
+  overflow: hidden;
+}
+.menu-items > * {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  color: var(--ink);
+  text-align: left;
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+}
+.menu-items > *:hover, .menu-items > *:focus-visible { background: var(--paper); }
+.menu-items [data-act="forget"] { color: var(--tomato); }
+
+main { padding: 0 1rem; }
+
+#status {
+  margin: 0.7rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+#status::before {
+  content: "";
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--leaf);
+}
+#status.offline::before { background: var(--tomato); }
+#status.pending::before { background: #d99a1c; }
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.7rem 0;
+  font-size: 0.9rem;
+}
+.bar label { margin: 0; color: var(--muted); white-space: nowrap; }
+.bar select { flex: 1; min-width: 0; font-size: 0.9rem; }
+
+button.quiet {
+  background: none;
+  border: 0;
+  padding: 0.4rem 0.2rem;
+  color: var(--leaf);
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  width: auto;
+}
+button.quiet:disabled { color: var(--muted); opacity: 0.6; }
+
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3.4rem;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.rows li.ghost { background: #eef3d2; }
+
+.grip {
+  flex: none;
+  width: 1.8rem;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  color: #a9b4a2;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.rows label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0.6rem 0;
+  cursor: pointer;
+}
+.rows .name { overflow-wrap: anywhere; font-size: 1.05rem; }
+
+.rows input[type="checkbox"] {
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 2px solid var(--leaf);
+  background-color: transparent;
+}
+.rows input[type="checkbox"]:checked {
+  background-color: var(--ball);
+  border-color: var(--leaf);
+  --pico-icon-checkbox: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316221a' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+}
+.rows li.done .name { text-decoration: line-through; color: var(--muted); }
+
+.rows input.qty {
+  flex: none;
+  width: 3.6rem;
+  padding: 0.3rem 0.4rem;
+  height: auto;
+  text-align: center;
+  background: transparent;
+}
+.rows .x, .rows .plus {
+  flex: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.rows .x:hover { color: var(--tomato); }
+.rows .plus { color: var(--leaf); font-weight: 700; }
+.rows .detail { color: var(--muted); font-size: 0.85rem; }
+.rows .text { flex: 1; min-width: 0; padding: 0.5rem 0 0.5rem 0.4rem; }
+
+#empty { margin: 2.5rem 0; color: var(--muted); text-align: center; }
+
+.section { margin: 1.4rem 0 0; border: 0; padding: 0; }
+.section summary { font-weight: 700; padding: 0.5rem 0; }
+.section[open] summary { margin-bottom: 0; }
+.section .none { color: var(--muted); font-size: 0.9rem; min-height: 0; padding: 0.6rem 0; border: 0; }
+
+/* The add field sits at the bottom edge, where the thumb is when holding a phone in a shop. */
+.addbar {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  translate: -50% 0;
+  z-index: 2;
+  width: min(100%, 36rem);
+  display: flex;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.7rem 1rem calc(0.7rem + env(safe-area-inset-bottom));
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+.addbar input { flex: 1; min-width: 0; height: 3.2rem; font-size: 1.05rem; }
+.addbar button {
+  flex: none;
+  width: 3.2rem;
+  height: 3.2rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--leaf);
+  background: var(--ball);
+  color: var(--ink);
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.addbar button:active { scale: 0.94; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
