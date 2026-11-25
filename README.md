@@ -17,3 +17,26 @@ In dieser Arbeit soll eine Webapplikation entwickelt werden, die eine Einkaufsli
 
 
 Die Applikation so zu entwickeln, dass sie als Docker-Container leicht auf jedem System getestet werden kann. Die Dokumentation hierzu ist dringend erforderlich. Sämtlicher Code ist unter einer Open Source Lizenz zu veröffentlichen.
+
+## Prototyp (Branch `prototype/feasibility`)
+
+Dieser Branch enthält einen Machbarkeits-Prototyp und die Dokumentation der Entwurfsentscheidungen.
+Er ist kein fertiges Produkt. Die Dokumentation liegt in [docs/](docs/README.md):
+Ziele, Recherche, Entscheidungen (ADRs) und Ergebnisse.
+
+Starten mit Docker:
+
+```sh
+docker compose up --build
+```
+
+Oder direkt mit Node.js ab Version 24 (keine Abhängigkeiten zu installieren):
+
+```sh
+npm start        # Server auf http://localhost:8080
+npm test         # Tests für Synchronisation und API
+```
+
+Dann <http://localhost:8080> öffnen. Zum Ausprobieren der Offline-Funktion den Server stoppen
+und die Seite neu laden. Hinweis: Offline-Betrieb funktioniert nur über `localhost` oder HTTPS,
+nicht über `http://<IP-Adresse>` im lokalen Netz (siehe [docs/03-findings.md](docs/03-findings.md)).
