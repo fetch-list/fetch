@@ -1,5 +1,5 @@
 // CSV export of a list (RFC 4180, UTF-8 with byte-order mark so that spreadsheet programs detect the encoding).
-import { sortItems } from '../public/js/core.js';
+import { sortItems } from '../public/js/shared/ordering.js';
 
 const cell = (value) => {
   const s = String(value ?? '');

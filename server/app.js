@@ -1,6 +1,6 @@
 // Wires the HTTP server together: routing, JSON REST API, static files, error handling.
 import http from 'node:http';
-import { materialize } from '../public/js/core.js';
+import { materialize } from '../public/js/shared/model.js';
 import { openDatabase } from './database.js';
 import { createRegisterStore, isValidChange } from './registers.js';
 import { createEventHub } from './events.js';

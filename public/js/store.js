@@ -1,6 +1,9 @@
 // Local-first store: every write goes to memory + IndexedDB first, the server hears about it later.
 import * as db from './db.js';
-import { Clock, materialize, merge, normName, rankId, rankWrites, sortItems } from './core.js';
+import { Clock } from './shared/hlc.js';
+import { merge } from './shared/registers.js';
+import { materialize, normName } from './shared/model.js';
+import { rankWrites, sortItems } from './shared/ordering.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -23,7 +26,7 @@ export const state = {
   syncing: false,
 };
 
-const regs = new Map(); // listId -> Map<regKey, register>
+const regs = new Map(); // listId -> Map<registerKey, register>
 const listeners = new Set();
 const tabs = new BroadcastChannel('fetch');
 let clock;

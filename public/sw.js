@@ -3,7 +3,7 @@
 // a new version becomes visible on the next load. API requests are never cached here:
 // list data lives in IndexedDB and is synced by the page itself.
 
-const CACHE = 'fetch-shell-v1';
+const CACHE = 'fetch-shell-v2';
 const SHELL = [
   './',
   'app.css',
@@ -12,7 +12,10 @@ const SHELL = [
   'js/app.js',
   'js/store.js',
   'js/db.js',
-  'js/core.js',
+  'js/shared/hlc.js',
+  'js/shared/registers.js',
+  'js/shared/model.js',
+  'js/shared/ordering.js',
   'vendor/pico.min.css',
   'vendor/sortable.min.js',
 ];

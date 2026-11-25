@@ -1,6 +1,7 @@
 // Server side of the sync protocol (docs/decisions/0006): stores the winning write per register
 // and hands out changes after a cursor.
-import { ENTITIES, HLC_RE } from '../public/js/core.js';
+import { ENTITIES } from '../public/js/shared/registers.js';
+import { HLC_RE } from '../public/js/shared/hlc.js';
 
 export function isValidChange(c) {
   return (

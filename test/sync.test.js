@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Clock, merge, materialize, sortItems, rankWrites, rankId } from '../public/js/core.js';
+import { Clock } from '../public/js/shared/hlc.js';
+import { merge } from '../public/js/shared/registers.js';
+import { materialize } from '../public/js/shared/model.js';
+import { sortItems, rankWrites, rankId } from '../public/js/shared/ordering.js';
 import { createApp } from '../server/app.js';
 
 const LIST = '11111111-1111-4111-8111-111111111111';
