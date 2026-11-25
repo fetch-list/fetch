@@ -2,7 +2,7 @@
 import * as db from './db.js';
 import { Clock } from './shared/hlc.js';
 import { merge } from './shared/registers.js';
-import { materialize, normName } from './shared/model.js';
+import { itemId, materialize } from './shared/model.js';
 import { rankWrites, sortItems } from './shared/ordering.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -80,7 +80,7 @@ export function view() {
     ...list,
     profile,
     active: sortItems(list.items.filter((i) => !i.deleted), list.ranks, profile),
-    history: list.items.filter((i) => i.deleted).sort((a, b) => (b.added ?? 0) - (a.added ?? 0)),
+    history: list.items.filter((i) => i.deleted).sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0)),
   };
 }
 
@@ -109,11 +109,11 @@ const here = (writes) => write(state.current, writes);
 export function addItem(name, qty = 1) {
   name = name.trim();
   if (!name) return;
-  const existing = materialize(regsOf(state.current).values()).items.find((i) => normName(i.name) === normName(name));
-  const id = existing?.id ?? uuid();
-  // Re-adding a known item revives it instead of creating a duplicate. "deleted: false" is written
-  // even if the item looks active here: someone else may have removed it while we were offline,
-  // and the write has to state the full intent ("this belongs on the list") to win that conflict.
+  const id = itemId(name);
+  const existing = materialize(regsOf(state.current).values()).items.find((i) => i.id === id);
+  // "deleted: false" is written even if the item looks active here: someone else may have removed
+  // it while we were offline, and the write has to state the full intent ("this belongs on the list")
+  // to win that conflict.
   const writes = [['item', id, 'qty', qty], ['item', id, 'checked', false], ['item', id, 'deleted', false]];
   if (!existing) writes.push(['item', id, 'name', name]);
   if (!existing || existing.deleted) writes.push(['item', id, 'added', Date.now()]);
@@ -121,9 +121,8 @@ export function addItem(name, qty = 1) {
 }
 
 export const setItem = (id, field, value) => here([['item', id, field, value]]);
-// "added" doubles as the time of the last status change, which orders the history.
 export const removeItems = (ids) =>
-  here(ids.flatMap((id) => [['item', id, 'deleted', true], ['item', id, 'added', Date.now()]]));
+  here(ids.flatMap((id) => [['item', id, 'deleted', true], ['item', id, 'deletedAt', Date.now()]]));
 export const restoreItem = (item) => addItem(item.name, item.qty ?? 1);
 
 export async function createProfile(name) {

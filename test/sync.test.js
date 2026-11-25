@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Clock } from '../public/js/shared/hlc.js';
 import { merge } from '../public/js/shared/registers.js';
-import { materialize } from '../public/js/shared/model.js';
+import { itemId, materialize } from '../public/js/shared/model.js';
 import { sortItems, rankWrites, rankId } from '../public/js/shared/ordering.js';
 import { createApp } from '../server/app.js';
 
@@ -45,6 +45,17 @@ test('replicas converge regardless of delivery order', () => {
   assert.deepEqual(forward, backward);
   assert.equal(forward.name, 'Hafermilch'); // latest write per field wins
   assert.equal(forward.checked, true); // edits to different fields both survive
+});
+
+test('the same item added on two offline devices appears once', () => {
+  const a = new Clock('a');
+  const b = new Clock('b');
+  const regs = new Map();
+  merge(regs, op(a, 'item', itemId('Milch'), 'name', 'Milch', 1000));
+  merge(regs, op(b, 'item', itemId(' milch '), 'name', 'milch', 1001));
+  const { items } = materialize(regs.values());
+  assert.equal(items.length, 1);
+  assert.equal(items[0].name, 'milch'); // the later spelling wins
 });
 
 test('drag and drop needs one rank write between ranked neighbours', () => {

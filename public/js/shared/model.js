@@ -2,6 +2,11 @@
 
 export const normName = (name) => name.trim().toLowerCase();
 
+// An item's id is its normalised name. Two devices that add "Milch" while offline therefore
+// write the same registers, and the item appears once after sync instead of twice.
+// The price: an item cannot be renamed, only removed and added under the new name.
+export const itemId = (name) => normName(name);
+
 // Folds registers into { name, items, profiles, bundles, ranks }.
 export function materialize(registers) {
   const entities = {};
