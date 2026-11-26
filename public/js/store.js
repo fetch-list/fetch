@@ -1,81 +1,31 @@
-// Local-first store: every write goes to memory + IndexedDB first, the server hears about it later.
-import * as db from './db.js';
-import { Clock } from './shared/hlc.js';
-import { merge } from './shared/registers.js';
+// What the user can do with lists, as writes to the local replica. The UI only talks to this module.
+import * as replica from './replica.js';
+import { state, registersOf } from './replica.js';
+import * as sync from './sync.js';
+import { uuid, UUID_RE } from './uuid.js';
 import { itemId, materialize } from './shared/model.js';
 import { rankWrites, sortItems } from './shared/ordering.js';
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
-// crypto.randomUUID() only exists in secure contexts; this also works over plain http in a LAN.
-export function uuid() {
-  if (crypto.randomUUID) return crypto.randomUUID();
-  const b = crypto.getRandomValues(new Uint8Array(16));
-  b[6] = (b[6] & 0x0f) | 0x40;
-  b[8] = (b[8] & 0x3f) | 0x80;
-  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
-}
-
-export const state = {
-  lists: [], // [{ id, since }] known on this device
-  current: null,
-  profiles: {}, // listId -> active sort profile on this device
-  pending: 0, // writes not yet confirmed by the server
-  online: navigator.onLine,
-  syncing: false,
-};
-
-const regs = new Map(); // listId -> Map<registerKey, register>
-const listeners = new Set();
-const tabs = new BroadcastChannel('fetch');
-let clock;
-let events;
-
-const regsOf = (listId) => regs.get(listId) ?? regs.set(listId, new Map()).get(listId);
-const emit = () => listeners.forEach((fn) => fn());
-export const onChange = (fn) => listeners.add(fn);
-
-async function loadRegs() {
-  regs.clear();
-  for (const { list, ...r } of await db.all('reg')) merge(regsOf(list), r);
-  state.pending = (await db.outbox())[0].length;
-}
+export { state };
+export const onChange = replica.onChange;
 
 export async function init() {
-  await db.open();
-  navigator.storage?.persist?.(); // ask the browser not to evict our data
-  let node = await db.get('node');
-  if (!node) await db.set('node', (node = uuid().slice(0, 8)));
-  clock = new Clock(node, (await db.get('clock')) ?? '');
-  state.lists = (await db.get('lists')) ?? [];
-  state.profiles = (await db.get('profiles')) ?? {};
-  state.current = (await db.get('current')) ?? null;
-  await loadRegs();
-
+  await replica.open();
   const shared = location.hash.slice(1);
   if (UUID_RE.test(shared)) await join(shared);
   else if (!state.lists.length) await createList('Einkaufsliste');
   else await select(state.lists.some((l) => l.id === state.current) ? state.current : state.lists[0].id);
-
-  tabs.onmessage = async () => {
-    await loadRegs();
-    emit();
-  };
-  addEventListener('online', sync);
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && sync());
-  setInterval(sync, 30_000);
+  sync.start();
 }
 
 // ---- reading ----
 
-export const listName = (id) => regsOf(id).get(`list\n${id}\nname`)?.value || 'Unbenannte Liste';
+export const listName = (id) => registersOf(id).get(`list\n${id}\nname`)?.value || 'Unbenannte Liste';
 
 export function view() {
-  const list = materialize(regsOf(state.current).values());
-  const profile = list.profiles.some((p) => p.id === state.profiles[state.current])
-    ? state.profiles[state.current]
-    : null;
+  const list = materialize(registersOf(state.current).values());
+  const chosen = state.profiles[state.current];
+  const profile = list.profiles.some((p) => p.id === chosen) ? chosen : null;
   return {
     ...list,
     profile,
@@ -86,22 +36,9 @@ export function view() {
 
 // ---- writing ----
 
-// writes: [[entity, id, field, value], ...]
 async function write(listId, writes) {
-  const stamped = writes.map(([entity, id, field, value]) => ({ entity, id, field, value, hlc: clock.now() }));
-  for (const r of stamped) merge(regsOf(listId), r);
-  state.pending += stamped.length;
-  emit();
-  // Register and outbox entry are stored in one transaction, so a crash cannot lose a pending change.
-  await db.tx(['reg', 'outbox', 'kv'], 'readwrite', (reg, outbox, kv) => {
-    for (const r of stamped) {
-      reg.put({ list: listId, ...r });
-      outbox.add({ list: listId, ...r });
-    }
-    kv.put(clock.toString(), 'clock');
-  });
-  tabs.postMessage('changed');
-  sync();
+  await replica.write(listId, writes);
+  sync.sync();
 }
 
 const here = (writes) => write(state.current, writes);
@@ -110,7 +47,7 @@ export function addItem(name, qty = 1) {
   name = name.trim();
   if (!name) return;
   const id = itemId(name);
-  const existing = materialize(regsOf(state.current).values()).items.find((i) => i.id === id);
+  const existing = materialize(registersOf(state.current).values()).items.find((i) => i.id === id);
   // "deleted: false" is written even if the item looks active here: someone else may have removed
   // it while we were offline, and the write has to state the full intent ("this belongs on the list")
   // to win that conflict.
@@ -134,8 +71,8 @@ export async function createProfile(name) {
 
 export async function setProfile(id) {
   state.profiles[state.current] = id;
-  await db.set('profiles', state.profiles);
-  emit();
+  await replica.save('profiles');
+  replica.emit();
 }
 
 // Called after drag and drop with the item ids in their new order.
@@ -158,26 +95,19 @@ export async function addBundle(bundle) {
 
 // ---- lists ----
 
-async function saveLists() {
-  await db.set('lists', state.lists);
-}
-
 export async function select(id) {
   state.current = id;
-  await db.set('current', id);
+  await replica.save('current');
   history.replaceState(null, '', '#' + id);
-  events?.close();
-  // The server pings this stream whenever someone changes the list.
-  events = new EventSource(`/api/lists/${id}/events`);
-  events.onmessage = sync;
-  emit();
-  sync();
+  sync.watch(id);
+  replica.emit();
+  sync.sync();
 }
 
 export async function createList(name) {
   const id = uuid();
   state.lists.push({ id, since: 0 });
-  await saveLists();
+  await replica.save('lists');
   await write(id, [['list', id, 'name', name]]);
   await select(id);
 }
@@ -185,7 +115,7 @@ export async function createList(name) {
 export async function join(id) {
   if (!state.lists.some((l) => l.id === id)) {
     state.lists.push({ id, since: 0 });
-    await saveLists();
+    await replica.save('lists');
   }
   await select(id);
 }
@@ -196,59 +126,7 @@ export const renameList = (name) => here([['list', state.current, 'name', name]]
 export async function forgetList() {
   const id = state.current;
   state.lists = state.lists.filter((l) => l.id !== id);
-  await saveLists();
+  await replica.save('lists');
   if (state.lists.length) await select(state.lists[0].id);
   else await createList('Einkaufsliste');
-}
-
-// ---- sync ----
-
-let again = false;
-
-export async function sync() {
-  if (state.syncing) return void (again = true);
-  state.syncing = true;
-  emit();
-  try {
-    // 1. Push everything in the outbox, grouped by list.
-    const [keys, entries] = await db.outbox();
-    const byList = new Map();
-    entries.forEach(({ list, ...change }, n) => {
-      const g = byList.get(list) ?? byList.set(list, { keys: [], changes: [] }).get(list);
-      g.keys.push(keys[n]);
-      g.changes.push(change);
-    });
-    for (const [list, g] of byList) {
-      const res = await fetch(`/api/lists/${list}/changes`, { method: 'POST', body: JSON.stringify({ changes: g.changes }) });
-      if (!res.ok) throw new Error('push failed: ' + res.status);
-      await db.tx(['outbox'], 'readwrite', (s) => g.keys.forEach((k) => s.delete(k)));
-      state.pending = Math.max(0, state.pending - g.keys.length);
-    }
-    // 2. Pull what changed on the server since our cursor.
-    for (const l of state.lists) {
-      const res = await fetch(`/api/lists/${l.id}/changes?since=${l.since}`);
-      if (!res.ok) throw new Error('pull failed: ' + res.status);
-      const { seq, changes } = await res.json();
-      const won = changes.filter((c) => {
-        clock.observe(c.hlc);
-        return merge(regsOf(l.id), c);
-      });
-      l.since = seq;
-      await db.tx(['reg', 'kv'], 'readwrite', (reg, kv) => {
-        for (const c of won) reg.put({ list: l.id, ...c });
-        kv.put(state.lists, 'lists');
-        kv.put(clock.toString(), 'clock');
-      });
-      if (won.length) tabs.postMessage('changed');
-    }
-    state.online = true;
-  } catch {
-    state.online = false; // stay usable; the outbox keeps the changes until the next attempt
-  }
-  state.syncing = false;
-  emit();
-  if (again) {
-    again = false;
-    sync();
-  }
 }
